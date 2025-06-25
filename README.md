@@ -15,7 +15,7 @@ This project is a comprehensive airline management and booking web application. 
 
 ## Admin Portal
 
-The application includes an admin portal for effective flight management:
+The application includes an admin portal for effective flight management :
 
 - **Flight Scheduling:** Admins can schedule flights.
 - **Seat Configuration:** Configure seat arrangements.
