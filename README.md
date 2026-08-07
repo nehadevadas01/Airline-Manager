@@ -11,8 +11,8 @@ A sleek, premium, full-stack airline reservation and operations management appli
 ---
 
 ## 📽️ Visual Preview
-- **[Demo 1 (User Booking Flow)](https://drive.google.com/file/d/1KRKBcX_lcVbeu2QQzBUnzvEUC4WgJwtj/view?usp=sharing)**
-- **[Demo 2 (Admin Portal & Features)](https://drive.google.com/file/d/1eci7aoBWVO76jqizuwhYSNivgLxFSRK5/view?usp=sharing)**
+- **[Demo 1 (without stripe)](https://drive.google.com/file/d/1KRKBcX_lcVbeu2QQzBUnzvEUC4WgJwtj/view?usp=sharing)**
+- **[Demo 2 (with stripe)](https://drive.google.com/file/d/1eci7aoBWVO76jqizuwhYSNivgLxFSRK5/view?usp=sharing)**
 
 ---
 
