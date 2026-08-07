@@ -8,7 +8,7 @@ function Update() {
 
   useEffect(() => {
     const fetchFlights = async () => {
-        const response = await fetch('http://localhost:3000/api/flightinfo');
+        const response = await fetch('http://localhost:3001/api/flightinfo');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -17,7 +17,7 @@ function Update() {
 
         const flightsWithDetails = [];
         for (const flight_ of flightsData) {
-          const detailsResponse = await fetch('http://localhost:3000/api/flights');
+          const detailsResponse = await fetch('http://localhost:3001/api/flights');
           if (detailsResponse.ok) {
             const detailsData = await detailsResponse.json();
             const flightDetails = detailsData.filter(flight =>

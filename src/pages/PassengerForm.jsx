@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import NavbarM from '../components/NavbarM';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 
-const PassengerForm = ({user}) => {
+const PassengerForm = ({ user }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const data = location.state || {};
-  const [errors, setErrors] = useState(Array.from({ length: data.passengers }, () => ({})));
-  const [formData, setFormData] = useState(Array.from({ length: data.passengers }, () => ({
+  const passengerCount = data.passengers || 1;
+
+  const [errors, setErrors] = useState(Array.from({ length: passengerCount }, () => ({})));
+  const [formData, setFormData] = useState(Array.from({ length: passengerCount }, () => ({
     title: 'Mr',
     firstName: '',
     lastName: '',
@@ -16,22 +19,26 @@ const PassengerForm = ({user}) => {
     mobile: ''
   })));
 
-  console.log(data);
-  const navigate = useNavigate();
-
   const handleChange = (e, index) => {
     const { name, value } = e.target;
     const updatedFormData = [...formData];
     updatedFormData[index] = { ...updatedFormData[index], [name]: value };
     setFormData(updatedFormData);
+
+    // Clear field-level error dynamically
+    if (errors[index]?.[name]) {
+      const updatedErrors = [...errors];
+      delete updatedErrors[index][name];
+      setErrors(updatedErrors);
+    }
   };
 
   const validateForm = () => {
     const currentErrors = formData.map(passenger => {
       const passengerErrors = {};
       if (!passenger.title) passengerErrors.title = 'Title is required';
-      if (!passenger.firstName) passengerErrors.firstName = 'First Name is required';
-      if (!passenger.lastName) passengerErrors.lastName = 'Last Name is required';
+      if (!passenger.firstName?.trim()) passengerErrors.firstName = 'First Name is required';
+      if (!passenger.lastName?.trim()) passengerErrors.lastName = 'Last Name is required';
       if (!passenger.gender) passengerErrors.gender = 'Gender is required';
       if (!passenger.dob) {
         passengerErrors.dob = 'Date of Birth is required';
@@ -47,203 +54,237 @@ const PassengerForm = ({user}) => {
     });
 
     setErrors(currentErrors);
-
-    // Check if there are any errors
     return currentErrors.every(error => Object.keys(error).length === 0);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log('Form submitted:', formData);
-      // Add your form submission logic here
-      console.log(formData);
-      navigate('/preview', {state:{formData: formData, data: data}});
-    } else {
-      console.log('Form has errors:', errors);
-      // alert('Please correct the errors in the form.');
+      navigate('/preview', { state: { formData, data } });
     }
-    // console.log('Form submitted:', formData);
-    // // Add your form submission logic here
-    // console.log(formData);
   };
 
   const timeDifference = (startTime, endTime) => {
-    // Parse the input timestamps
+    if (!startTime || !endTime) return "2h 00m";
     const start = new Date(startTime);
     const end = new Date(endTime);
-
-    // Calculate the difference in milliseconds
     const diffMs = end - start;
-    // console.log("diff"+diffMs);
-
-    // Calculate the difference in hours and minutes
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    // Format the result
-    let result = "";
-    if(diffMinutes !== 0)
-    result = `${diffHours.toString().padStart(2, '0')}h ${diffMinutes.toString().padStart(2, '0')}m`;
-    else
-    result = `${diffHours.toString().padStart(2, '0')}h`;
-    return result;
-}
+    
+    if (isNaN(diffHours)) return "2h 00m";
+    if (diffMinutes !== 0) {
+      return `${diffHours.toString().padStart(2, '0')}h ${diffMinutes.toString().padStart(2, '0')}m`;
+    }
+    return `${diffHours.toString().padStart(2, '0')}h`;
+  };
 
   const formatDateTime = (dateTimeString) => {
-    if (typeof dateTimeString !== 'string')
-    return "Invalid Date";
+    if (typeof dateTimeString !== 'string') return ["Invalid Date", ""];
     const [datePart, timePart] = dateTimeString.split('T');
-    // const [year, month, day] = datePart.split('-');
-    // const [hours, minutes] = timePart.split(':');
-    // const formattedDate = `${day}-${month}-${year}`;
-    // const formattedTime = `${hours}:${minutes}`;
-    return [datePart, timePart];
+    return [datePart, timePart || ""];
   };
 
   const formatDate = (date) => {
-    if (typeof date !== 'string')
-    return "Invalid Date";
-    const [year, month, day] = date.split('-');
-    // const [hours, minutes] = timePart.split(':');
-    const formattedDate = `${day}-${month}-${year}`;
-    // const formattedTime = `${hours}:${minutes}`;
-    return formattedDate;
+    if (typeof date !== 'string') return "Invalid Date";
+    const parts = date.split('-');
+    if (parts.length !== 3) return date;
+    const [year, month, day] = parts;
+    return `${day}-${month}-${year}`;
   };
 
+  const [depDate, depTime] = formatDateTime(data.departureTime);
+  const [arrDate, arrTime] = formatDateTime(data.arrivalTime);
+
   return (
-    <>
-    <NavbarM user={user}/>
-    <div className="flight-listing-container w-3/4 mx-auto mt-8 bg-white p-8 rounded-lg shadow-md">
-      <div className='text-center text-2xl font-bold mb-3'>Chosen Flight</div>
-      <div className="flight-card p-4 mb-4 bg-gray-100 rounded-lg shadow-md">
-          <h1 className="text-xl font-bold">
-            {data.flightName}
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white font-sans flex flex-col">
+      <NavbarM user={user} />
+
+      <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-8">
+        
+        {/* Step Indicator Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-400/20 text-brand-300 text-xs font-semibold uppercase tracking-wider mb-2">
+            Step 2 of 3
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            Passenger Details
           </h1>
-          <h1 className="text-lg text-gray-600 font-bold">
-            {data.flightNumber}
-          </h1>
-          <h1 className="text-lg font-bold">{data.seat}</h1>
-        <div className="flex justify-between items-center mt-6">
+          <p className="text-slate-400 text-sm mt-1">Please enter information as it appears on official travel IDs.</p>
         </div>
-        <div className="flex justify-between items-center">
-          <div className="text-center">
-            <p className="text-lg">{data.originAirport}</p>
-            <p className="text-gray-600">{formatDateTime(data.departureTime)[1]}</p>
-            <p className="text-gray-600">{formatDate(formatDateTime(data.departureTime)[0])}</p>
+
+        {/* Selected Flight Summary Card */}
+        <div className="rounded-3xl bg-white/[0.05] border border-white/10 p-6 md:p-8 backdrop-blur-xl shadow-2xl mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="h-10 px-4 rounded-xl bg-gradient-to-r from-brand-500 to-purple-500 flex items-center justify-center font-extrabold text-white text-sm shadow-md">
+                {data.flightName || 'Airline'}
+              </div>
+              <span className="font-mono text-slate-300 font-bold tracking-wider">{data.flightNumber}</span>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-semibold text-xs uppercase tracking-wider">
+              {data.seat} Class • ₹{data.price?.toLocaleString('en-IN')} / seat
+            </span>
           </div>
-          <div className="relative flex items-center flex-1 mx-4">
-            <div className="flex-1 border-t border-gray-300 relative" style={{ top: '-0.5rem', marginLeft: '0.5rem', marginRight: '0.5rem' }}></div>
-            <p className="mx-4 text-center relative" style={{ top: '-0.75rem' }}>{timeDifference(data.departureTime, data.arrivalTime)}</p>
-            <div className="flex-1 border-t border-gray-300 relative" style={{ top: '-0.5rem', marginLeft: '0.5rem', marginRight: '0.5rem' }}></div>
-          </div>
-          <div className="text-center">
-            <p className="text-lg">{data.destinationAirport}</p>
-            <p className="text-gray-600">{formatDateTime(data.arrivalTime)[1]}</p>
-            <p className="text-gray-600">{formatDate(formatDateTime(data.arrivalTime)[0])}</p>
+
+          <div className="py-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Departure */}
+            <div className="text-center md:text-left min-w-[120px]">
+              <p className="text-2xl font-extrabold text-white tracking-tight">{depTime}</p>
+              <p className="text-lg font-bold text-brand-300 mt-0.5">{data.originAirport}</p>
+              <p className="text-xs text-slate-400">{formatDate(depDate)}</p>
+            </div>
+
+            {/* Flight Visual Line */}
+            <div className="flex-1 w-full max-w-xs flex flex-col items-center px-4">
+              <span className="text-xs font-semibold text-slate-400 mb-1">
+                ⏱️ {timeDifference(data.departureTime, data.arrivalTime)}
+              </span>
+              <div className="relative w-full flex items-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-brand-400 shadow-glow" />
+                <div className="flex-1 h-0.5 bg-gradient-to-r from-brand-400 via-indigo-500 to-purple-400 relative">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 px-2">
+                    <span className="text-sm inline-block transform rotate-90">✈️</span>
+                  </div>
+                </div>
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-glow" />
+              </div>
+            </div>
+
+            {/* Arrival */}
+            <div className="text-center md:text-right min-w-[120px]">
+              <p className="text-2xl font-extrabold text-white tracking-tight">{arrTime}</p>
+              <p className="text-lg font-bold text-purple-300 mt-0.5">{data.destinationAirport}</p>
+              <p className="text-xs text-slate-400">{formatDate(arrDate)}</p>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-    <div className="w-3/4 mx-auto mt-10 bg-white p-8 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Passenger Information</h2>
-      <form onSubmit={handleSubmit}>
-        {formData.map((passenger, index) => (
-          <div key={index} className="mb-8">
-            <div className="title font-bold text-lg">Passenger {index+1}:</div>
-            <div className="flex mb-3">
+
+        {/* Passenger Information Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formData.map((passenger, index) => (
+            <div key={index} className="rounded-3xl bg-white/[0.04] border border-white/10 p-6 md:p-8 backdrop-blur-xl shadow-xl">
+              <div className="flex items-center gap-3 pb-4 mb-6 border-b border-white/10">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-500 to-purple-500 flex items-center justify-center font-bold text-xs text-white">
+                  {index + 1}
+                </div>
+                <h3 className="text-lg font-bold text-white">Passenger {index + 1} Information</h3>
+              </div>
+
+              {/* Row 1: Title, First Name, Last Name */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">Title</label>
+                  <select
+                    name="title"
+                    value={passenger.title}
+                    onChange={(e) => handleChange(e, index)}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand-400/50"
+                  >
+                    <option value="Mr" className="bg-slate-900 text-white">Mr</option>
+                    <option value="Mrs" className="bg-slate-900 text-white">Mrs</option>
+                    <option value="Ms" className="bg-slate-900 text-white">Ms</option>
+                    <option value="Dr" className="bg-slate-900 text-white">Dr</option>
+                  </select>
+                  {errors[index]?.title && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].title}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    placeholder="e.g. John"
+                    value={passenger.firstName}
+                    onChange={(e) => handleChange(e, index)}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-4 text-sm placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-400/50"
+                  />
+                  {errors[index]?.firstName && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].firstName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    placeholder="e.g. Doe"
+                    value={passenger.lastName}
+                    onChange={(e) => handleChange(e, index)}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-4 text-sm placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-400/50"
+                  />
+                  {errors[index]?.lastName && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].lastName}</p>}
+                </div>
+              </div>
+
+              {/* Row 2: Gender, DOB, Mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">Gender</label>
+                  <select
+                    name="gender"
+                    value={passenger.gender}
+                    onChange={(e) => handleChange(e, index)}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand-400/50"
+                  >
+                    <option value="Male" className="bg-slate-900 text-white">Male</option>
+                    <option value="Female" className="bg-slate-900 text-white">Female</option>
+                    <option value="Other" className="bg-slate-900 text-white">Other</option>
+                  </select>
+                  {errors[index]?.gender && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].gender}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="dob"
+                    value={passenger.dob}
+                    onChange={(e) => handleChange(e, index)}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-4 text-sm outline-none focus:ring-2 focus:ring-brand-400/50 [color-scheme:dark]"
+                  />
+                  {errors[index]?.dob && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].dob}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 ml-1">Mobile Number</label>
+                  <input
+                    type="tel"
+                    name="mobile"
+                    placeholder="10-digit mobile number"
+                    value={passenger.mobile}
+                    onChange={(e) => handleChange(e, index)}
+                    maxLength={10}
+                    className="w-full h-11 rounded-xl bg-white/[0.07] border border-white/[0.15] text-white px-4 text-sm placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-400/50"
+                  />
+                  {errors[index]?.mobile && <p className="text-rose-400 text-xs mt-1 ml-1">{errors[index].mobile}</p>}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap mb-4">
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">Title:</label>
-                <select
-                  name="title"
-                  value={passenger.title}
-                  onChange={(e) => handleChange(e, index)}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="Mr">Mr</option>
-                  <option value="Mrs">Mrs</option>
-                  <option value="Ms">Ms</option>
-                  <option value="Dr">Dr</option>
-                </select>
-                {errors[index].title && <p className="text-red-500 text-sm">{errors[index].title}</p>}
-              </div>
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">First Name:</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={passenger.firstName}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                />
-                {errors[index].firstName && <p className="text-red-500 text-sm">{errors[index].firstName}</p>}
-              </div>
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">Last Name:</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={passenger.lastName}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                />
-                {errors[index].lastName && <p className="text-red-500 text-sm">{errors[index].lastName}</p>}
-              </div>
-            </div>
-            <div className="flex flex-wrap mb-4">
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">Gender:</label>
-                <select
-                  name="gender"
-                  value={passenger.gender}
-                  onChange={(e) => handleChange(e, index)}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-                {errors[index].gender && <p className="text-red-500 text-sm">{errors[index].gender}</p>}
-              </div>
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">Date of Birth:</label>
-                <input
-                  type="date"
-                  name="dob"
-                  value={passenger.dob}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                />
-                {errors[index].dob && <p className="text-red-500 text-sm">{errors[index].dob}</p>}
-              </div>
-              <div className="w-full md:w-1/2 lg:w-1/3 pr-0 md:pr-4">
-                <label className="block text-gray-700">Mobile Number:</label>
-                <input
-                  type="number"
-                  name="mobile"
-                  value={passenger.mobile}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                />
-                {errors[index].mobile && <p className="text-red-500 text-sm">{errors[index].mobile}</p>}
-              </div>
-            </div>
-            <div className="flex mb-4">
-            </div>
+          ))}
+
+          {/* Form Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white font-semibold text-sm transition-all duration-200"
+            >
+              ← Back to Flight List
+            </button>
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-500 via-purple-600 to-indigo-600 hover:scale-[1.02] active:scale-[0.98] text-white font-bold text-base shadow-xl shadow-brand-500/25 hover:shadow-glow transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <span>Continue to Preview</span>
+              <span className="text-lg">→</span>
+            </button>
           </div>
-        ))}
-        <Link to='/preview' onClick={handleSubmit} state={{formData: formData, data: data}}><button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">
-          Submit
-        </button></Link>
-      </form>
+        </form>
+      </main>
+
+      <Footer />
     </div>
-    {/* <Footer/> */}
-    </>
   );
 };
 

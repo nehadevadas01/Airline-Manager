@@ -47,7 +47,7 @@ const FlightsManagement = () => {
   useEffect(() => {
     const fetchFlights = async () => {
       try {
-          const response = await fetch('http://localhost:3000/api/flights');
+          const response = await fetch('http://localhost:3001/api/flights');
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }

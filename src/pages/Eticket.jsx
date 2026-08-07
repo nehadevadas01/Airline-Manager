@@ -1,197 +1,296 @@
-import React, { useEffect, useRef, useState } from 'react'
-import NavbarM from '../components/NavbarM'
-import { useLocation } from 'react-router-dom'
-import { useReactToPrint } from 'react-to-print'
-import Footer from '../components/Footer'
+import React, { useEffect, useRef } from 'react';
+import NavbarM from '../components/NavbarM';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
+import Footer from '../components/Footer';
 
-const Eticket = ({user}) => {
+const Eticket = ({ user }) => {
   const location = useLocation();
-  const ticketref = useRef(); 
+  const navigate = useNavigate();
+  const ticketref = useRef();
+  
   const query = new URLSearchParams(location.search);
   const info = query.get('info');
   const data = info ? JSON.parse(decodeURIComponent(info)) : {};
-  // console.log(data);
-  // const [bookingFlag, setBookingFlag] = useState(false);
+
   const handlePrint = useReactToPrint({
     content: () => ticketref.current,
-    documentTitle: "E-Tickets",
-    // onAfterPrint: () => alert("Print Success"),
-  })
+    documentTitle: `E-Tickets_${data.data?.flightNumber || 'Flyhigh'}`,
+  });
+
   const now = new Date();
   const formattedTime = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}T${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-  const Data = {
-    email: data.user.email,
-    data: data.data,
-    formData: data.formData,
-    time: formattedTime
-  }
-  const Data_ = {
-    flightNumber: data.data.flightNumber,
-    departureTime: data.data.departureTime,
-    arrivalTime: data.data.arrivalTime,
-    passengers: data.data.passengers,
-    seat: data.data.seat.toLowerCase()
-  }
-  console.log(Data);
-  // console.log(Data.data);
-  console.log(Data_);
-  useEffect(() => {
-    if (!sessionStorage.getItem('bookingSent')) {
-    sessionStorage.setItem('bookingSent', true);
-    const Booking = async () => {
-      let response = await fetch("http://localhost:3000/bookings", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(Data)
-      });
-      if (response.ok) 
-      {
-          const result = await response.json();
-          console.log('Booking submitted successfully:', result);
-      } 
-      else
-      console.error('Failed to submit booking:', response.statusText);
 
-    }
-    const Update = async () => {
-      let response_ = await fetch("http://localhost:3000/api/flight", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(Data_),
-      });
-  
-      if (response_.ok) 
-        {
-            const result = await response_.json();
-            console.log('Updated successfully:', result);
-        } 
-        else
-        console.error('Failed to update:', response_.statusText);
-    }
-    Update();
-    Booking();
+  const bookingData = {
+    email: data.user?.email || 'guest@flyhigh.com',
+    data: data.data || {},
+    formData: data.formData || [],
+    time: formattedTime
+  };
+
+  const updateSeatData = {
+    flightNumber: data.data?.flightNumber,
+    departureTime: data.data?.departureTime,
+    arrivalTime: data.data?.arrivalTime,
+    passengers: data.data?.passengers,
+    seat: data.data?.seat ? data.data.seat.toLowerCase() : 'economy'
+  };
+
+  useEffect(() => {
+    if (!sessionStorage.getItem('bookingSent') && data.data) {
+      sessionStorage.setItem('bookingSent', 'true');
+      
+      const sendBooking = async () => {
+        try {
+          let response = await fetch("http://localhost:3001/bookings", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bookingData)
+          });
+          if (response.ok) {
+            console.log('Booking recorded successfully in MongoDB');
+          }
+        } catch (err) {
+          console.error('Failed to submit booking:', err);
+        }
+      };
+
+      const updateFlightSeats = async () => {
+        try {
+          let response = await fetch("http://localhost:3001/api/flight", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateSeatData)
+          });
+          if (response.ok) {
+            console.log('Seats updated successfully in MongoDB');
+          }
+        } catch (err) {
+          console.error('Failed to update seats:', err);
+        }
+      };
+
+      updateFlightSeats();
+      sendBooking();
     }
   }, []);
 
   const timeDifference = (startTime, endTime) => {
-    // Parse the input timestamps
+    if (!startTime || !endTime) return "2h 00m";
     const start = new Date(startTime);
     const end = new Date(endTime);
-
-    // Calculate the difference in milliseconds
     const diffMs = end - start;
-    // console.log("diff"+diffMs);
-
-    // Calculate the difference in hours and minutes
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    // Format the result
-    let result = "";
-    if(diffMinutes !== 0)
-    result = `${diffHours.toString().padStart(2, '0')}h ${diffMinutes.toString().padStart(2, '0')}m`;
-    else
-    result = `${diffHours.toString().padStart(2, '0')}h`;
-    return result;
-}
+    
+    if (isNaN(diffHours)) return "2h 00m";
+    if (diffMinutes !== 0) {
+      return `${diffHours.toString().padStart(2, '0')}h ${diffMinutes.toString().padStart(2, '0')}m`;
+    }
+    return `${diffHours.toString().padStart(2, '0')}h`;
+  };
 
   const formatDateTime = (dateTimeString) => {
-    if (typeof dateTimeString !== 'string')
-    return "Invalid Date";
+    if (typeof dateTimeString !== 'string') return ["Invalid Date", ""];
     const [datePart, timePart] = dateTimeString.split('T');
-    // const [year, month, day] = datePart.split('-');
-    // const [hours, minutes] = timePart.split(':');
-    // const formattedDate = `${day}-${month}-${year}`;
-    // const formattedTime = `${hours}:${minutes}`;
-    return [datePart, timePart];
+    return [datePart, timePart || ""];
   };
 
   const formatDate = (date) => {
-    if (typeof date !== 'string')
-    return "Invalid Date";
-    const [year, month, day] = date.split('-');
-    // const [hours, minutes] = timePart.split(':');
-    const formattedDate = `${day}-${month}-${year}`;
-    // const formattedTime = `${hours}:${minutes}`;
-    return formattedDate;
+    if (typeof date !== 'string') return "Invalid Date";
+    const parts = date.split('-');
+    if (parts.length !== 3) return date;
+    const [year, month, day] = parts;
+    return `${day}-${month}-${year}`;
   };
-  
-  return (
-    <>
-    <NavbarM user={data.user}/>
-      <h1 className='text-center font-bold text-4xl mt-10'>E-Tickets</h1>
-      <div ref={ticketref}>
-        {data.formData.map((list, index) => (
-          <div key={index} className='flex flex-col justify-center items-center'>
-            <div className="h-auto md:h-[65vh] w-[90vw] md:w-[80vw] bg-white rounded-[20px] overflow-hidden shadow-lg mx-2 md:mx-6 my-6 flex flex-col md:flex-row">
-              <div className="w-full md:w-[70%] h-auto md:h-[65vh] rounded-l-[20px] p-4 md:pl-12 md:pr-20 md:pb-10">
-                <div className="h-auto md:h-[10vh] w-full px-2 md:px-5 flex items-center justify-between md:justify-evenly">
-                  <img className="mt-4 object-fill h-12 md:h-16" src="/eplane.png" />
-                  <p className="text-lg md:text-[30px] text-gray-500 mt-4">{data.data.seat} Class</p>
-                </div>
-                <div className='bg-gray-400 h-[1px] mt-3 mb-4'></div>
-                <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-40 mb-2 mt-4">
-                  <div className="flex flex-col justify-center items-center">
-                    <div className="font-normal text-sm md:text-lg text-gray-500">AIRLINE</div>
-                    <div className="font-bold text-lg md:text-2xl">{data.data.flightName}</div>
-                  </div>
-                  <div className='flex flex-col justify-center items-center'>
-                    <div className="font-normal text-sm md:text-lg text-gray-500">FROM</div>
-                    <div className="font-bold text-2xl">{data.data.originAirport}</div>
-                  </div>
-                  <div className='flex flex-col justify-center items-center'>
-                    <div className="font-normal text-sm md:text-lg text-gray-500">TO</div>
-                    <div className="font-bold text-lg md:text-2xl">{data.data.destinationAirport}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between mb-2 mt-6 gap-4 md:gap-0">
-                  <div className="flex flex-col justify-center items-center w-full md:w-72">
-                    <div className="font-normal text-sm md:text-lg text-gray-500 text-center">PASSENGER</div>
-                    <div className="font-bold text-lg md:text-2xl text-center">{list.title}. {list.firstName} {list.lastName}</div>
-                  </div>
-                  <div className="flex flex-col justify-center items-center w-full md:w-32">
-                    <div className="font-normal text-sm md:text-lg text-gray-500 text-center">FLIGHT TIME</div>
-                    <div className="font-bold text-lg md:text-2xl text-center">{timeDifference(data.data.departureTime, data.data.arrivalTime)}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between mt-6 gap-4 md:gap-0">
-                  <div className="flex flex-col justify-center items-center">
-                    <div className="font-normal text-sm md:text-lg text-gray-500">DEPARTURE</div>
-                    <div className="font-bold text-lg md:text-xl text-black">{formatDate(formatDateTime(data.data.departureTime)[0])}</div>
-                    <div className="font-semibold text-xl md:text-3xl">{formatDateTime(data.data.departureTime)[1]}</div>
-                  </div>
-                  <div className='flex flex-col justify-center items-center'>
-                    <div className="font-normal text-sm md:text-lg text-gray-500">ARRIVAL</div>
-                    <div className="font-bold text-lg md:text-xl text-black">{formatDate(formatDateTime(data.data.arrivalTime)[0])}</div>
-                    <div className="font-semibold text-xl md:text-3xl">{formatDateTime(data.data.arrivalTime)[1]}</div>
-                  </div>
-                  <div className='flex flex-col justify-center items-center'>
-                    <div className="font-normal text-sm md:text-lg text-gray-500">FLIGHT NO</div>
-                    <div className="font-bold text-lg md:text-2xl">{data.data.flightNumber}</div>
-                  </div>
-                </div>
-              </div>
-              <div className='w-[30%] h-[65vh] bg-black relative overflow-hidden rounded-r-[20px]'>
-                <img className="object-fill h-[65vh]" src="https://as2.ftcdn.net/v2/jpg/04/34/85/91/1000_F_434859188_XrsJIIRfMovZDOulIlfX867As5m4niLB.jpg" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className='flex justify-center items-center'>
-        <button onClick={handlePrint} className='text-white text-xl font-bold py-2 px-4 rounded-xl bg-green-500 hover:bg-green-700'>
-          <div className="elements flex justify-center items-center gap-2">
-            <img src="/print.png" alt="" className='h-10' />
-            <div>Print</div>
-          </div>
-        </button>
-      </div>
-      {/* <Footer/> */}
-    </>
-  )
-}
 
-export default Eticket
+  const flight = data.data || {};
+  const passengers = data.formData || [];
+  const currentUser = data.user || user || {};
+
+  const [depDate, depTime] = formatDateTime(flight.departureTime);
+  const [arrDate, arrTime] = formatDateTime(flight.arrivalTime);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white font-sans flex flex-col">
+      <NavbarM user={currentUser} />
+
+      <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-10">
+        
+        {/* Success Banner */}
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-3xl text-emerald-400 shadow-lg shadow-emerald-500/10">
+            ✓
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            Booking Confirmed!
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">Your e-ticket and boarding passes have been issued successfully.</p>
+        </div>
+
+        {/* Printable Tickets Area */}
+        <div ref={ticketref} className="space-y-8">
+          {passengers.map((passenger, index) => {
+            const pnrCode = `FH-${Math.floor(100000 + Math.random() * 900000)}`;
+
+            return (
+              <div
+                key={index}
+                className="relative overflow-hidden rounded-3xl bg-slate-900 border border-white/15 text-slate-900 shadow-2xl transition-all duration-300 print:shadow-none print:border-black"
+              >
+                {/* Main Pass Container */}
+                <div className="flex flex-col lg:flex-row">
+                  
+                  {/* Left Main Ticket section */}
+                  <div className="flex-1 p-6 md:p-8 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white border-b lg:border-b-0 lg:border-r border-white/10 relative">
+                    
+                    {/* Ticket Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/10">
+                      <div className="flex items-center gap-3">
+                        <img src="/plane.png" alt="Flyhigh" className="h-8 w-8" />
+                        <span className="font-extrabold text-xl tracking-tight text-white">Flyhigh Airlines</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-400/30 font-bold text-xs uppercase tracking-wider">
+                          {flight.seat || 'Economy'} Class
+                        </span>
+                        <span className="font-mono text-xs text-slate-400 bg-white/5 px-3 py-1 rounded-full">
+                          PNR: <strong className="text-white">{pnrCode}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Airline & Route Summary */}
+                    <div className="py-6 flex items-center justify-between gap-4">
+                      {/* Origin */}
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">From</p>
+                        <p className="text-3xl font-extrabold text-white mt-0.5">{flight.originAirport}</p>
+                        <p className="text-sm font-semibold text-brand-300">{depTime}</p>
+                        <p className="text-xs text-slate-400">{formatDate(depDate)}</p>
+                      </div>
+
+                      {/* Flight Path Graphic */}
+                      <div className="flex-1 max-w-xs px-4 text-center">
+                        <span className="text-xs font-semibold text-slate-400">
+                          {flight.flightName} ({flight.flightNumber})
+                        </span>
+                        <div className="relative w-full flex items-center my-2">
+                          <div className="w-2.5 h-2.5 rounded-full bg-brand-400" />
+                          <div className="flex-1 h-0.5 bg-gradient-to-r from-brand-400 via-indigo-500 to-purple-400 relative">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 px-1">
+                              <span className="text-xs inline-block transform rotate-90">✈️</span>
+                            </div>
+                          </div>
+                          <div className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                        </div>
+                        <span className="text-xs font-mono text-slate-400">
+                          {timeDifference(flight.departureTime, flight.arrivalTime)}
+                        </span>
+                      </div>
+
+                      {/* Destination */}
+                      <div className="text-right">
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">To</p>
+                        <p className="text-3xl font-extrabold text-white mt-0.5">{flight.destinationAirport}</p>
+                        <p className="text-sm font-semibold text-purple-300">{arrTime}</p>
+                        <p className="text-xs text-slate-400">{formatDate(arrDate)}</p>
+                      </div>
+                    </div>
+
+                    {/* Passenger & Flight Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-white/10 bg-white/[0.02] -mx-6 md:-mx-8 -mb-6 md:-mb-8 p-6 md:p-8">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Passenger</p>
+                        <p className="font-bold text-white text-base mt-1">
+                          {passenger.title}. {passenger.firstName} {passenger.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Flight No.</p>
+                        <p className="font-mono font-bold text-white text-base mt-1">{flight.flightNumber}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Gate / Boarding</p>
+                        <p className="font-bold text-emerald-400 text-base mt-1">Gate B4 • 45m Prior</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Contact Mobile</p>
+                        <p className="font-mono font-bold text-white text-base mt-1">{passenger.mobile || currentUser.mobileNumber || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Ticket Stub Section */}
+                  <div className="w-full lg:w-72 bg-gradient-to-br from-slate-900 to-indigo-950 p-6 md:p-8 flex flex-col justify-between items-center text-center border-t lg:border-t-0 border-white/10">
+                    <div className="w-full">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Boarding Pass</span>
+                        <span className="text-xs font-bold text-brand-400">#0{index + 1}</span>
+                      </div>
+
+                      <div className="bg-slate-950 p-4 rounded-2xl border border-white/10 mb-4 text-left">
+                        <p className="text-xs text-slate-400 uppercase font-semibold">Passenger</p>
+                        <p className="font-bold text-white text-sm truncate">{passenger.title}. {passenger.firstName} {passenger.lastName}</p>
+                        
+                        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10">
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase">Flight</p>
+                            <p className="font-mono font-bold text-xs text-white">{flight.flightNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase">Seat</p>
+                            <p className="font-bold text-xs text-emerald-400">Assigned at Check-in</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Barcode SVG illustration */}
+                    <div className="w-full bg-white p-3 rounded-xl flex flex-col items-center justify-center">
+                      <div className="w-full h-12 flex justify-between items-center px-1">
+                        {[4,2,6,1,3,5,2,4,1,5,3,2,6,1,4,2,5,3,1,4,2,6,3,1].map((width, i) => (
+                          <div
+                            key={i}
+                            className="bg-slate-950 h-full rounded-sm"
+                            style={{ width: `${width * 1.5}px` }}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-700 tracking-widest mt-1">
+                        {pnrCode} - {flight.flightNumber}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 print:hidden">
+          <button
+            onClick={() => navigate('/')}
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white font-semibold text-sm transition-all duration-200"
+          >
+            ← Return to Home
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 hover:scale-105 active:scale-95 text-white font-bold text-base shadow-xl shadow-emerald-500/25 hover:shadow-glow transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <span className="text-xl">🖨️</span>
+            <span>Print / Download E-Ticket</span>
+          </button>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default Eticket;

@@ -11,7 +11,7 @@ function AirlineManagement() {
     useEffect(() => {
         const fetchFlightCounts = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/airlines');
+                const response = await fetch('http://localhost:3001/api/airlines');
                 const data = await response.json();
                 setFlightCounts(data);
                 console.log(data);

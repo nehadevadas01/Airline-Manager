@@ -18,7 +18,7 @@ function AddAirline() {
 
   useEffect(() => {
     const fetchAirlineNames = async () => {
-        const response = await fetch("http://localhost:3000/api/airlines");
+        const response = await fetch("http://localhost:3001/api/airlines");
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
@@ -50,7 +50,7 @@ function AddAirline() {
       flightCode: flightNumber,
       flights,
     };
-          const response = await fetch("http://localhost:3000/api/airlines", {
+          const response = await fetch("http://localhost:3001/api/airlines", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

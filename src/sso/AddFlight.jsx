@@ -32,7 +32,7 @@ function AddFlight() {
   console.log(data);
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/airports')
+    fetch('http://localhost:3001/api/airports')
       .then(response => response.json())
       .then(data => {
         const Filter = data.filter(airport => airport.code !== destinationAirport);
@@ -42,7 +42,7 @@ function AddFlight() {
   }, [destinationAirport]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/airports')
+    fetch('http://localhost:3001/api/airports')
       .then(response => response.json())
       .then(data => {
         const filtered = data.filter(airport => airport.code !== originAirport);
@@ -182,7 +182,7 @@ const handleSubmit = async (e) => {
     }
 
     console.log(flightdata);
-      const response = await fetch('http://localhost:3000/api/airlines-addflt', {
+      const response = await fetch('http://localhost:3001/api/airlines-addflt', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ const handleSubmit = async (e) => {
           throw new Error('Network response was not ok ' + response.statusText);
       }
 
-      const res = await fetch("http://localhost:3000/api/flights", {
+      const res = await fetch("http://localhost:3001/api/flights", {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -311,7 +311,7 @@ const handleSubmit = async (e) => {
                         <input type="number" name='firstCost' id='firstCost' min="1" step="1" defaultValue={1} required disabled={!firstChecked} value={firstCost} onChange={handleFirstCost} className="border border-slate-500 absolute left-1/2 h-8"></input>
                     </div> */}
                     <div className="flex gap-20 justify-center mt-10">
-                        <button type='submit' onClick={handleSubmit} className="bg-[#585eff] w-20 h-10 rounded-md text-white font-semibold disabled:opacity-50" disabled={errorMessage || !flightNumber || originAirport == "NULL" || destinationAirport == "NULL"}>Submit</button>
+                        <button type='submit' onClick={handleSubmit} className="bg-[#585eff] w-20 h-10 rounded-md text-white font-semibold disabled:opacity-50" disabled={errorMessage || !flightNumber || originAirport === "NULL" || destinationAirport === "NULL"}>Submit</button>
                         <button type='reset' className="bg-[#ee3333] w-20 h-10 rounded-md text-white font-semibold">Reset</button>
                     </div>
                 </form>

@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import NavbarM from '../components/NavbarM';
+import Footer from '../components/Footer';
 
-
-const UserProfile = () => {
+const UserProfile = ({ user, setUser }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const data = location.state || {};
+
+  const storedUserStr = sessionStorage.getItem('user');
+  const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+  const activeUser = data.userData || user || storedUser;
+
   const [userProfile, setUserProfile] = useState({
     title: '',
     firstName: '',
@@ -14,65 +21,69 @@ const UserProfile = () => {
     gender: '',
     maritalStatus: '',
     address: '',
-    email: '',
     mobileNumber: '',
-    // frequentFlyerNumber: ''
   });
-
-  // userProfile.title = data.userData.title;
-  // userProfile.firstName = data.userData.firstName;
-  // userProfile.lastName = data.userData.lastName;
-  // userProfile.email = data.userData.email;
-  // userProfile.phone = data.userData.mobileNumber;
 
   const [profileImage, setProfileImage] = useState(null);
   const [completion, setCompletion] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingImage, setEditingImage] = useState(false);
 
+  // Redirect if not logged in
   useEffect(() => {
-    if (data.userData) {
-      const updatedProfile = {
-        title: data.userData.title || '',
-        firstName: data.userData.firstName || '',
-        lastName: data.userData.lastName || '',
-        email: data.userData.email || '',
-        mobileNumber: data.userData.mobileNumber || '',
-        birthday: '',
-        gender: '',
-        maritalStatus: '',
-        address: '',
-      };
-      setUserProfile(updatedProfile);
-      calculateCompletion(updatedProfile);
+    if (!activeUser) {
+      alert('Please log in to view your profile.');
+      navigate('/login');
     }
-  }, []);
+  }, [activeUser, navigate]);
 
+  // Load profile from activeUser prop/session and local storage image
+  useEffect(() => {
+    if (activeUser) {
+      const initialProfile = {
+        title: activeUser.title || '',
+        firstName: activeUser.firstName || '',
+        lastName: activeUser.lastName || '',
+        email: activeUser.email || '',
+        mobileNumber: activeUser.mobileNumber || '',
+        birthday: activeUser.birthday || '',
+        gender: activeUser.gender || '',
+        maritalStatus: activeUser.maritalStatus || '',
+        address: activeUser.address || '',
+      };
+      setUserProfile(initialProfile);
+      calculateCompletion(initialProfile);
+
+      const savedImage = localStorage.getItem(`profile_image_${activeUser.email}`);
+      if (savedImage) {
+        setProfileImage(savedImage);
+      }
+    }
+  }, [activeUser]);
+
+  // Fetch full details from database
   useEffect(() => {
     const fetchProfile = async () => {
-      console.log('Fetching profile...');
+      if (!activeUser || !activeUser.email) return;
       try {
-        const response = await fetch('http://localhost:3000/api/users');
+        const response = await fetch('http://localhost:3001/api/users');
         if (!response.ok) {
           throw new Error(`Network response was not ok: ${response.statusText}`);
         }
-        const Data = await response.json();
-        const filterdata = Data.filter(profile =>
-          profile.email === data.userData.email
-        )
-        // console.log('Fetched user profile:', data);
-        console.log(filterdata[0]);
-        if (filterdata[0]) {
+        const usersList = await response.json();
+        const loggedInUser = usersList.find(profile => profile.email === activeUser.email);
+        
+        if (loggedInUser) {
           const updatedProfile = {
-            title: filterdata[0].title || '',
-            firstName: filterdata[0].firstName || '',
-            lastName: filterdata[0].lastName || '',
-            email: filterdata[0].email || '',
-            mobileNumber: filterdata[0].mobileNumber || '',
-            birthday: filterdata[0].birthday || '',
-            gender: filterdata[0].gender || '',
-            maritalStatus: filterdata[0].maritalStatus || '',
-            address: filterdata[0].address || '',
+            title: loggedInUser.title || '',
+            firstName: loggedInUser.firstName || '',
+            lastName: loggedInUser.lastName || '',
+            email: loggedInUser.email || '',
+            mobileNumber: loggedInUser.mobileNumber || '',
+            birthday: loggedInUser.birthday || '',
+            gender: loggedInUser.gender || '',
+            maritalStatus: loggedInUser.maritalStatus || '',
+            address: loggedInUser.address || '',
           };
           setUserProfile(updatedProfile);
           calculateCompletion(updatedProfile);
@@ -82,27 +93,17 @@ const UserProfile = () => {
       }
     };
     
-    calculateCompletion(userProfile);
     fetchProfile();
-  }, []);
-
+  }, [activeUser]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    
-    // if (name === 'frequentFlyerNumber' && isNaN(value)) {
-    //   alert('Frequent Flyer Number must be a number');
-    //   return;
-    // }
-
     const updatedProfile = {
       ...userProfile,
       [name]: value,
     };
     setUserProfile(updatedProfile);
     calculateCompletion(updatedProfile);
-    console.log('Updated user profile:', updatedProfile);
   };
 
   const handleImageChange = (e) => {
@@ -111,7 +112,9 @@ const UserProfile = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result);
-        console.log('Updated profile image');
+        if (userProfile.email) {
+          localStorage.setItem(`profile_image_${userProfile.email}`, reader.result);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -119,9 +122,8 @@ const UserProfile = () => {
 
   const calculateCompletion = (profile) => {
     const fields = Object.values(profile);
-    const completedFields = fields.filter((field) => field !== '');
+    const completedFields = fields.filter((field) => field && field.trim() !== '');
     setCompletion(Math.round((completedFields.length / fields.length) * 100));
-    console.log('Profile completion:', completion);
   };
 
   const toggleProfileEditing = () => {
@@ -133,9 +135,8 @@ const UserProfile = () => {
   };
 
   const saveProfile = async () => {
-    console.log('Saving profile...');
     try {
-      const response = await fetch('http://localhost:3000/api/update-profile', {
+      const response = await fetch('http://localhost:3001/api/update-profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,11 +150,27 @@ const UserProfile = () => {
         const errorMessage = await response.text();
         throw new Error(`Network response was not ok: ${response.statusText}, ${errorMessage}`);
       }
-      const result = await response.json();
-      console.log('Profile save result:', result); 
-      setEditingProfile(false); 
-      console.log('Profile saved successfully');
-      alert('Profile updated successfully');
+      
+      // Update session storage and app state
+      const updatedSessionUser = {
+        title: userProfile.title,
+        firstName: userProfile.firstName,
+        lastName: userProfile.lastName,
+        email: userProfile.email,
+        mobileNumber: userProfile.mobileNumber,
+        birthday: userProfile.birthday,
+        gender: userProfile.gender,
+        maritalStatus: userProfile.maritalStatus,
+        address: userProfile.address,
+      };
+      
+      sessionStorage.setItem('user', JSON.stringify(updatedSessionUser));
+      if (setUser) {
+        setUser(updatedSessionUser);
+      }
+      
+      setEditingProfile(false);
+      alert('Profile updated successfully!');
     } catch (error) {
       console.error('Error saving profile:', error);
       alert(`Error updating profile: ${error.message}`);
@@ -161,15 +178,18 @@ const UserProfile = () => {
   };
 
   const saveImage = () => {
-    // Save image to backend or perform any necessary actions
-    setEditingImage(false); // Exit editing mode after saving
+    setEditingImage(false);
+    alert('Image saved successfully!');
   };
 
   const renderInputField = (label, name, type = 'text') => {
+    const isAddress = name === 'address';
+    const wrapperClass = isAddress ? "md:col-span-2 mb-5" : "mb-5";
+    
     if (type === 'select') {
       return (
-        <div key={name} className="mb-4">
-          <label htmlFor={name} className="block text-gray-700 capitalize">
+        <div key={name} className={wrapperClass}>
+          <label htmlFor={name} className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             {label}
           </label>
           <select
@@ -177,29 +197,29 @@ const UserProfile = () => {
             name={name}
             value={userProfile[name]}
             onChange={handleChange}
-            className="w-full mt-1 p-2 border rounded-lg"
-            disabled={!editingProfile} // Disable select when not editing
+            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!editingProfile}
           >
-            <option value="">{`Select ${label}`}</option>
+            <option value="" className="bg-slate-900">{`Select ${label}`}</option>
             {name === 'title' && (
               <>
-                <option value="Mr.">Mr.</option>
-                <option value="Ms.">Ms.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Dr.">Dr.</option>
+                <option value="Mr." className="bg-slate-900">Mr.</option>
+                <option value="Ms." className="bg-slate-900">Ms.</option>
+                <option value="Mrs." className="bg-slate-900">Mrs.</option>
+                <option value="Dr." className="bg-slate-900">Dr.</option>
               </>
             )}
             {name === 'gender' && (
               <>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="male" className="bg-slate-900">Male</option>
+                <option value="female" className="bg-slate-900">Female</option>
+                <option value="other" className="bg-slate-900">Other</option>
               </>
             )}
             {name === 'maritalStatus' && (
               <>
-                <option value="single">Single</option>
-                <option value="married">Married</option>
+                <option value="single" className="bg-slate-900">Single</option>
+                <option value="married" className="bg-slate-900">Married</option>
               </>
             )}
           </select>
@@ -207,8 +227,8 @@ const UserProfile = () => {
       );
     } else {
       return (
-        <div key={name} className="mb-4">
-          <label htmlFor={name} className="block text-gray-700 capitalize">
+        <div key={name} className={wrapperClass}>
+          <label htmlFor={name} className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             {label}
           </label>
           <input
@@ -217,8 +237,9 @@ const UserProfile = () => {
             name={name}
             value={userProfile[name]}
             onChange={handleChange}
-            className="w-full mt-1 p-2 border rounded-lg"
-            disabled={!editingProfile || name === 'email'} // Disable input when not editing or if it's the email field
+            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!editingProfile || name === 'email'}
+            placeholder={`Enter your ${label.toLowerCase()}`}
           />
         </div>
       );
@@ -226,125 +247,197 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row w-full">
-      <div className="w-full md:w-1/4 bg-white shadow-md rounded-lg p-8 relative">
-        <div className="text-center mb-6">
-          <div className="relative w-36 h-36 mx-auto rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-            {profileImage ? (
-              <img
-                src={profileImage}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-4xl text-gray-500">👤</span>
-            )}
-            {editingImage && (
-              <label
-                htmlFor="profileImageUpload"
-                className="absolute bottom-4 right-4 bg-blue-500 text-white p-1 rounded-full cursor-pointer"
-              >
-                ✏️
-                <input
-                  type="file"
-                  id="profileImageUpload"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-              </label>
-            )}
-          </div>
-          <h2 className="mt-4 text-xl font-bold">Personal Profile</h2>
-        </div>
-        {/* <ul>
-          <li className="mb-2">
-            <a href="#" className="text-blue-500 hover:underline">
-              Profile
-            </a>
-          </li>
-          <li className="mb-2">
-            <a href="#" className="text-gray-700 hover:underline">
-              Login Details
-            </a>
-          </li>
-          <li className="mb-2">
-            <a href="#" className="text-gray-700 hover:underline">
-              Save Travellers
-            </a>
-          </li>
-          <li className="mb-2">
-            <a href="#" className="text-gray-700 hover:underline">
-              Logout
-            </a>
-          </li>
-        </ul> */}
-      </div>
-      <div className="w-full md:w-3/4 bg-white shadow-md rounded-lg p-8 mt-10 md:mt-0 md:ml-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex-1">
-            <p className="text-gray-700">Complete your Profile</p>
-            <div className="bg-gray-200 h-2 rounded-full mt-1 mr-4">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-500 ease-in-out"
-                style={{ width: `${completion}%` }}
-              ></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white font-sans flex flex-col">
+      <NavbarM user={activeUser} />
+
+      <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-10">
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* Left Column: Profile Card & Sidebar Action Links */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-6">
+            
+            {/* Glass Card for Profile Image & Progress */}
+            <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-white/10 backdrop-blur-md p-8 shadow-2xl text-center">
+              
+              <div className="relative w-36 h-36 mx-auto rounded-full bg-slate-800/80 border-2 border-indigo-500/30 flex items-center justify-center overflow-hidden group shadow-lg">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-5xl">👤</span>
+                )}
+                
+                {editingImage && (
+                  <label
+                    htmlFor="profileImageUpload"
+                    className="absolute inset-0 bg-slate-950/60 flex items-center justify-center cursor-pointer transition-all duration-300 hover:bg-slate-950/80"
+                  >
+                    <span className="text-white text-sm font-semibold tracking-wide bg-indigo-600/80 px-3 py-1.5 rounded-full shadow">
+                      Upload
+                    </span>
+                    <input
+                      type="file"
+                      id="profileImageUpload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <h2 className="mt-5 text-2xl font-bold tracking-tight text-white">
+                {userProfile.firstName ? `${userProfile.title || ''} ${userProfile.firstName} ${userProfile.lastName || ''}` : 'Personal Profile'}
+              </h2>
+              <p className="text-slate-400 text-sm mt-1">{userProfile.email || 'flyhigh-member'}</p>
+
+              {/* Progress Container */}
+              <div className="mt-8 pt-6 border-t border-white/10 text-left">
+                <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider mb-2">
+                  <span className="text-slate-400">Profile Completion</span>
+                  <span className="text-indigo-400">{completion}%</span>
+                </div>
+                <div className="bg-slate-950/50 h-3 rounded-full overflow-hidden border border-white/5 p-0.5">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-2 rounded-full transition-all duration-700 ease-out shadow-glow"
+                    style={{ width: `${completion}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Edit Image Buttons */}
+              <div className="mt-6 flex justify-center">
+                {!editingImage ? (
+                  <button
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-full transition-all border border-indigo-500/20"
+                    onClick={toggleImageEditing}
+                  >
+                    ✏️ Change Avatar
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-full shadow transition-all"
+                      onClick={saveImage}
+                    >
+                      Save Photo
+                    </button>
+                    <button
+                      className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full transition-all border border-white/5"
+                      onClick={() => setEditingImage(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            <p className="text-gray-700 mt-1">{completion}%</p>
+
+            {/* Quick Links Card */}
+            <div className="rounded-3xl bg-slate-900/40 border border-white/10 backdrop-blur-md p-6 shadow-2xl">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 px-2">Account Actions</h3>
+              <div className="flex flex-col gap-2">
+                <Link
+                  to="/myflts"
+                  state={{ email: userProfile.email }}
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all font-medium text-slate-200 hover:text-white flex items-center gap-2"
+                >
+                  ✈️ My Flight Bookings
+                </Link>
+                <Link
+                  to="/feedback"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all font-medium text-slate-200 hover:text-white flex items-center gap-2"
+                >
+                  💬 Submit Feedback Review
+                </Link>
+                <Link
+                  to="/"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all font-medium text-slate-200 hover:text-white flex items-center gap-2"
+                >
+                  🏠 Back to Search Terminal
+                </Link>
+              </div>
+            </div>
+
           </div>
+
+          {/* Right Column: User Profile Fields Form */}
+          <div className="w-full lg:w-2/3">
+            <div className="rounded-3xl bg-slate-900/40 border border-white/10 backdrop-blur-md p-8 shadow-2xl">
+              
+              {/* Form Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-white/10 mb-8">
+                <div>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-white">Profile Settings</h1>
+                  <p className="text-slate-400 text-sm mt-1">Manage your passenger information and flight preferences.</p>
+                </div>
+                
+                <div className="flex items-center">
+                  {!editingProfile ? (
+                    <button
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2 border border-indigo-500/30"
+                      onClick={toggleProfileEditing}
+                    >
+                      <span>Edit Details</span> ✏️
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all"
+                        onClick={saveProfile}
+                      >
+                        Save Settings
+                      </button>
+                      <button
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition-all border border-white/5"
+                        onClick={() => {
+                          setEditingProfile(false);
+                          // Reset profile to activeUser state
+                          setUserProfile({
+                            title: activeUser.title || '',
+                            firstName: activeUser.firstName || '',
+                            lastName: activeUser.lastName || '',
+                            email: activeUser.email || '',
+                            mobileNumber: activeUser.mobileNumber || '',
+                            birthday: activeUser.birthday || '',
+                            gender: activeUser.gender || '',
+                            maritalStatus: activeUser.maritalStatus || '',
+                            address: activeUser.address || '',
+                          });
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Form Grid */}
+              <form onSubmit={(e) => e.preventDefault()}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                  {renderInputField("Prefix Title", "title", "select")}
+                  {renderInputField("First Name", "firstName")}
+                  {renderInputField("Last Name", "lastName")}
+                  {renderInputField("Date of Birth", "birthday", "date")}
+                  {renderInputField("Gender Identity", "gender", "select")}
+                  {renderInputField("Marital Status", "maritalStatus", "select")}
+                  {renderInputField("Registered Email Address (Locked)", "email", "email")}
+                  {renderInputField("Mobile Number", "mobileNumber", "tel")}
+                  {renderInputField("Permanent Residential Address", "address")}
+                </div>
+              </form>
+
+            </div>
+          </div>
+
         </div>
-        {!editingProfile && (
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-              onClick={toggleProfileEditing}
-            >
-              Edit Profile{" "}
-              <span role="img" aria-label="edit">
-                ✏️
-              </span>
-            </button>
-          )}
-          {editingProfile && (
-            <button
-              className="bg-green-500 text-white px-4 py-2 rounded-lg"
-              onClick={saveProfile}
-            >
-              Save Profile
-            </button>
-          )}
-          {!editingImage && (
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg ml-4"
-              onClick={toggleImageEditing}
-            >
-              Edit Image{" "}
-              <span role="img" aria-label="edit">
-                ✏️
-              </span>
-            </button>
-          )}
-          {editingImage && (
-            <button
-              className="bg-green-500 text-white px-4 py-2 rounded-lg ml-4"
-              onClick={saveImage}
-            >
-              Save Image
-            </button>
-          )}
-        <h1 className="text-2xl font-bold text-center mb-6">User Profile</h1>
-        <form>
-          {renderInputField("Title", "title", "select")}
-          {renderInputField("First Name", "firstName")}
-          {renderInputField("Last Name", "lastName")}
-          {renderInputField("Birthday", "birthday", "date")}
-          {renderInputField("Gender", "gender", "select")}
-          {renderInputField("Marital Status", "maritalStatus", "select")}
-          {renderInputField("Address", "address")}
-          {renderInputField("Email", "email", "email")}
-          {renderInputField("Phone", "mobileNumber", "tel")}
-          {/* {renderInputField("Frequent Flyer Number", "frequentFlyerNumber", "number")} */}
-        </form>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };

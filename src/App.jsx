@@ -63,11 +63,11 @@ function App() {
         <Route path='/preview' element={<Preview user={user}/>}/>
         <Route path='/eticket' element={<Eticket user={handleSetUser}/>}/>
         <Route path='/eticket_' element={<Eticket_ user={user}/>}/>
-        <Route path='/user' element={<UserProfile/>}/>
+        <Route path='/user' element={<UserProfile user={user} setUser={setUser}/>}/>
         <Route path='/fltstatus/:originAirport/:destinationAirport/:selectedDate' element={<FlightStatus user={user} setUser={handleSetUser}/>}/>
         <Route path='/fltlist/:originAirport/:destinationAirport/:selectedDate/:passengers' element={<FlightList user={user} setUser={handleSetUser}/>}/>
         <Route path='/myflts' element={<MyFlights user={user}/>}/>
-        <Route path='/about' element={<About/>}/>
+        <Route path='/about' element={<About user={user} setUser={handleSetUser}/>}/>
 
         {/* Admin Portal Routes */}
 

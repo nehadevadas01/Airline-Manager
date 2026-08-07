@@ -10,7 +10,7 @@ function Feedbacks() {
   useEffect(() => {
         const fetchFeedbackData = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/feedback');
+                const response = await fetch('http://localhost:3001/api/feedback');
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);

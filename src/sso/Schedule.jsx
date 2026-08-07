@@ -186,7 +186,7 @@ useEffect(() => {
       prices
     }
     console.log(flightdata);
-    const response = await fetch('http://localhost:3000/api/flightin', {
+    const response = await fetch('http://localhost:3001/api/flightin', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
