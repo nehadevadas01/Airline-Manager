@@ -144,7 +144,7 @@ The frontend application will boot at `http://localhost:5173`.
 
 ---
 
-## 🏢 Database Models & Architecture
+## Database Models & Architecture
 
 Your local MongoDB database contains the following collection configurations:
 
@@ -157,7 +157,7 @@ Your local MongoDB database contains the following collection configurations:
 
 ---
 
-## 💳 Stripe Payment Integration
+## Stripe Payment Integration
 
 Payment checkout is integrated directly into the purchase flow.
 * When clicking **Proceed** on the Preview screen, the backend initiates a secure Checkout Session.
