@@ -1,4 +1,4 @@
-# ✈️ Flyhigh - Premium Airline Booking & Management System
+# Flyhigh - Premium Airline Booking & Management System
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 [![Package Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
@@ -10,29 +10,29 @@ A sleek, premium, full-stack airline reservation and operations management appli
 
 ---
 
-## 📽️ Visual Preview
+## Visual Preview
 - **[Demo 1 (without stripe)](https://drive.google.com/file/d/1KRKBcX_lcVbeu2QQzBUnzvEUC4WgJwtj/view?usp=sharing)**
 - **[Demo 2 (with stripe)](https://drive.google.com/file/d/1eci7aoBWVO76jqizuwhYSNivgLxFSRK5/view?usp=sharing)**
 
 ---
 
-## 📖 Project Description
+## Project Description
 Flyhigh is a state-of-the-art web application that solves the complexity of travel planning by offering users a seamless booking flow, secure profile management, real-time flight route search, and e-ticket generation. In addition to customer-facing services, Flyhigh features a robust Admin Portal that enables operators to coordinate seat configurations, add new routes, manage existing fleets, and oversee customer feedback.
 
 ---
 
-## 🗺️ Table of Contents
-- [✨ Core Features](#-core-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [💻 Technical Setup & Operation](#-technical-setup--operation)
+## Table of Contents
+- [Core Features](#-core-features)
+- [Tech Stack](#️-tech-stack)
+- [Technical Setup & Operation](#-technical-setup--operation)
   - [Prerequisites](#prerequisites)
   - [Installation Steps](#installation-steps)
   - [Configuration](#configuration)
   - [Seeding the Database](#seeding-the-database)
   - [Running the Application](#running-the-application)
-- [🏢 Database Models & Architecture](#-database-models--architecture)
-- [💳 Stripe Payment Integration](#-stripe-payment-integration)
-- [🤝 Ecosystem & Governance](#-ecosystem--governance)
+- [Database Models & Architecture](#-database-models--architecture)
+- [Stripe Payment Integration](#-stripe-payment-integration)
+- [Ecosystem & Governance](#-ecosystem--governance)
   - [Contributing Guidelines](#contributing-guidelines)
   - [Roadmap & Known Issues](#roadmap--known-issues)
   - [License](#license)
@@ -40,9 +40,9 @@ Flyhigh is a state-of-the-art web application that solves the complexity of trav
 
 ---
 
-## ✨ Core Features
+## Core Features
 
-### 👤 Customer Experience
+### Customer Experience
 * **Search & Book Flights**: Multi-city origin/destination search with seat class selection (Economy, Business, and First Class).
 * **Smart Boarding Passes**: Automatic generation of individual, print-ready passenger E-Tickets with mock barcode stub graphics.
 * **SSL Secured Checkout**: Integration with Stripe Checkout for processing secure online ticket payments.
@@ -50,14 +50,14 @@ Flyhigh is a state-of-the-art web application that solves the complexity of trav
 * **Real-time Flight Tracker**: Check active flight schedules and statuses by route and date.
 * **Interactive Feedback**: Leave ratings and reviews about your flight experience.
 
-### 🏢 Administrative Tools
+### Administrative Tools
 * **Route Catalog Manager**: Add, modify, and delete flight routes.
 * **Scheduler**: Allocate dates, pricing tiers, and cabin capacities for scheduled flights.
 * **Passenger Manifests**: Fetch and review active passenger manifests for scheduled flights.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 * **Frontend**: React (Vite), Tailwind CSS, React Router DOM, React-to-Print
 * **Backend**: Node.js, Express.js
 * **Database**: MongoDB (Native Driver)
@@ -65,7 +65,7 @@ Flyhigh is a state-of-the-art web application that solves the complexity of trav
 
 ---
 
-## 💻 Technical Setup & Operation
+## Technical Setup & Operation
 
 ### Prerequisites
 * **Node.js**: `v18.0.0` or higher
@@ -166,7 +166,7 @@ Payment checkout is integrated directly into the purchase flow.
 
 ---
 
-## 🤝 Ecosystem & Governance
+## Ecosystem & Governance
 
 ### Contributing Guidelines
 Contributions are welcome! Please fork the repository and open a pull request with your changes. Ensure code is formatted correctly and any backend logic additions are properly structured.
